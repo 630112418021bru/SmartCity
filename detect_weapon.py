@@ -5,6 +5,7 @@ from pathlib import Path
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
+import time
 from numpy import random
 
 from models.experimental import attempt_load
@@ -126,10 +127,41 @@ def detect(save_img=False):
 
                     if save_img or view_img:  # Add bbox to image
                         label = f'{names[int(cls)]} {conf:.2f}'
+                        if conf > 0.8:
+                            print("เจอวัตถุต้องสงสัย")
+                            
+                            
+                            
+                            # แคปรูปจากกล้อง
+                            img_with_box = im0.copy()  
+                            plot_one_box(xyxy, img_with_box, label=label, color=colors[int(cls)], line_thickness=3)
+                            
+                            cv2.imwrite("captured_object_with_box.jpg", img_with_box)
+                        
+
+                             # ส่งรูปผ่าน Line Notify
+                            import requests
+                            url = "https://notify-api.line.me/api/notify"
+                            token = "diBUwDO2C7NR9u5YVQfTpCz8WMjB44lconz4n1tO92w"  # แทนที่ด้วย Token ของคุณ
+                            headers = {"Authorization": f"Bearer {token}"}
+                            message = "เจอวัตถุต้องสงสัย"
+
+                            files = {"imageFile": open("captured_object_with_box.jpg", "rb")}
+                            data = {"message": message}
+
+                            response = requests.post(url, headers=headers, data=data, files=files)
+                            
+                            
+
+                            if response.status_code == 200:
+                                print("ส่งรูปผ่าน Line Notify สำเร็จ")
+                            else:
+                                print("เกิดข้อผิดพลาดในการส่งรูปผ่าน Line Notify")
                         plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=1)
 
             # Print time (inference + NMS)
             print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
+            
 
             # Stream results
             if view_img:
@@ -138,6 +170,8 @@ def detect(save_img=False):
 
             # Save results (image with detections)
             if save_img:
+                
+                
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)
                     print(f" The image with the result is saved in: {save_path}")
@@ -165,8 +199,8 @@ def detect(save_img=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default='yolov7.pt', help='model.pt path(s)')
-    parser.add_argument('--source', type=str, default='inference/images', help='source')  # file/folder, 0 for webcam
+    parser.add_argument('--weights', nargs='+', type=str, default='best.pt', help='model.pt path(s)')
+    parser.add_argument('--source', type=str, default='0', help='source')  # file/folder, 0 for webcam
     parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
